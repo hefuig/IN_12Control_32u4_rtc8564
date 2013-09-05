@@ -111,7 +111,8 @@ ISR(TIMER0_COMPA_vect) {
 // -- 初期設定
 // ------------------------------------------------------------
 void setup() {
-
+  
+  delay(1000);
   // LEDポート
   pinMode(LED, OUTPUT);
 
