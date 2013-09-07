@@ -37,7 +37,8 @@ boolean interruptOVF = false;
 unsigned char IN12Num[8] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 unsigned char IN12Com[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 unsigned char IN12Digit = 0;
-unsigned char IN12Bright = 5;
+unsigned char IN12BrightDaytime = 5;
+unsigned char IN12BrightNight = 5;
 
 // USB Device address
 unsigned char udaddrOld = 0;
@@ -52,6 +53,8 @@ unsigned int displayDateIntervalValue = 600;  // 年月日表示する秒数間�
 unsigned int displayDateIntervalCount = 0;
 unsigned int displayDateSecondsValue = 10;    // 年月日表示秒数
 unsigned char dispTimeFormat = 0;             // 時分秒表示フォーマット
+unsigned char hourDaytime = 7;
+unsigned char hourNight = 22;
 
 // ユーザデータ表示秒数
 unsigned int userDataTimerValue = 30;         // ユーザーデータを表示する時間
@@ -61,7 +64,8 @@ unsigned int userDataTimerCount = 0;
 // -- TIMER0 割り込み処理(1ms毎)
 // ------------------------------------------------------------
 ISR(TIMER0_COMPA_vect) {
-
+  unsigned char bright = 5;
+  
   // K155ID1 の A～D を設定
   digitalWrite(K155ID1_A, bitRead(IN12Num[IN12Digit], 0));
   digitalWrite(K155ID1_B, bitRead(IN12Num[IN12Digit], 1));
@@ -80,7 +84,20 @@ ISR(TIMER0_COMPA_vect) {
   SPI.transfer(bit(IN12Digit));
   digitalWrite(HC595RCLK, HIGH);
 
-  switch(IN12Bright) {
+  if(hourNight > hourDaytime) {
+    if(rtc.bcdToBin(rtc.Hours) < hourDaytime || rtc.bcdToBin(rtc.Hours) >= hourNight) {
+      bright = IN12BrightNight;
+    } else {
+      bright = IN12BrightDaytime;
+    }
+  } else {
+    if(rtc.bcdToBin(rtc.Hours) >= hourNight && rtc.bcdToBin(rtc.Hours) < hourDaytime) {
+      bright = IN12BrightNight;
+    } else {
+      bright = IN12BrightDaytime;
+    }
+  }
+  switch(bright) {
     case 1: delayMicroseconds(100); break;
     case 2: delayMicroseconds(200); break;
     case 3: delayMicroseconds(300); break;
@@ -345,7 +362,10 @@ void loop() {
         serialPrintln("set dateinterval 99999");
         serialPrintln("set datesec 99999");
         serialPrintln("set udatasec 99999");
-        serialPrintln("set bright [1 to 9]");
+        serialPrintln("set bright daytime [1 to 9]");
+        serialPrintln("set bright night [1 to 9]");
+        serialPrintln("set hour daytime [0 to 23]");
+        serialPrintln("set hour night [0 to 23]");
         serialPrintln("cathod");
         serialPrintln("save");
         serialPrintln("show");
@@ -396,12 +416,36 @@ void loop() {
         cathodePoisoning();
         serialPrintln("Done.");
       }
-      if(strncmp(serial0String, "set bright ", 11) == 0) {
-        unsigned int i = atoi(&serial0String[11]);
+      if(strncmp(serial0String, "set bright daytime ", 19) == 0) {
+        unsigned int i = atoi(&serial0String[19]);
         if(i > 0 && i < 10) {
-          IN12Bright = i;
+          IN12BrightDaytime = i;
           serialPrint("value = ");
-          serialPrintln(IN12Bright);
+          serialPrintln(IN12BrightDaytime);
+        }
+      }
+      if(strncmp(serial0String, "set bright night ", 17) == 0) {
+        unsigned int i = atoi(&serial0String[17]);
+        if(i > 0 && i < 10) {
+          IN12BrightNight = i;
+          serialPrint("value = ");
+          serialPrintln(IN12BrightNight);
+        }
+      }
+      if(strncmp(serial0String, "set hour daytime ", 17) == 0) {
+        unsigned int i = atoi(&serial0String[17]);
+        if(i >= 0 && i < 24) {
+          hourDaytime = i;
+          serialPrint("value = ");
+          serialPrintln(hourDaytime);
+        }
+      }
+      if(strncmp(serial0String, "set hour night ", 15) == 0) {
+        unsigned int i = atoi(&serial0String[15]);
+        if(i >= 0 && i < 24) {
+          hourNight = i;
+          serialPrint("value = ");
+          serialPrintln(hourNight);
         }
       }
       if(strncmp(serial0String, "save", 4) == 0) {
@@ -420,8 +464,14 @@ void loop() {
         serialPrintln(displayDateSecondsValue);
         serialPrint("set udatasec: ");
         serialPrintln(userDataTimerValue);
-        serialPrint("set bright: ");
-        serialPrintln(IN12Bright);
+        serialPrint("set bright daytime: ");
+        serialPrintln(IN12BrightDaytime);
+        serialPrint("set bright night: ");
+        serialPrintln(IN12BrightNight);
+        serialPrint("set hour daytime: ");
+        serialPrintln(hourDaytime);
+        serialPrint("set hour night: ");
+        serialPrintln(hourNight);
         serialPrintln("---");
       }
     }
@@ -487,7 +537,10 @@ void saveEEPROM() {
   EEPROM.write(5, byteHigh);
 
   EEPROM.write(6, dispTimeFormat);
-  EEPROM.write(7, IN12Bright);
+  EEPROM.write(7, IN12BrightDaytime);
+  EEPROM.write(8, IN12BrightNight);
+  EEPROM.write(9, hourDaytime);
+  EEPROM.write(10, hourNight);
 }
 
 // ------------------------------------------------------------
@@ -516,9 +569,21 @@ void readEEPROM() {
   if(dispTimeFormat > 1) {
     dispTimeFormat = 1;
   }
-  IN12Bright = EEPROM.read(7);
-  if(IN12Bright > 9) {
-    IN12Bright = 5;
+  IN12BrightDaytime = EEPROM.read(7);
+  if(IN12BrightDaytime > 9) {
+    IN12BrightDaytime = 5;
+  }
+  IN12BrightNight = EEPROM.read(8);
+  if(IN12BrightNight > 9) {
+    IN12BrightNight = 5;
+  }
+  hourDaytime = EEPROM.read(9);
+  if(hourDaytime > 23) {
+    hourDaytime = 7;
+  }
+  hourNight = EEPROM.read(10);
+  if(hourNight > 23) {
+    hourNight = 22;
   }
 }
 
