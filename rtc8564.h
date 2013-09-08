@@ -17,6 +17,7 @@ class RTC8564 {
   unsigned char Seconds;
   unsigned char Minutes;
   unsigned char Hours;
+  unsigned char Hours12;
   unsigned char Days;
   unsigned char Weekday;
   unsigned char Month;
@@ -27,6 +28,8 @@ class RTC8564 {
   unsigned char minutesLow;
   unsigned char hourHigh;
   unsigned char hourLow;
+  unsigned char hourHigh12;
+  unsigned char hourLow12;
   unsigned char dayHigh;
   unsigned char dayLow;
   unsigned char monthHigh;

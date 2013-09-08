@@ -94,12 +94,23 @@ void RTC8564::get() {
   minutesLow = Minutes & 0x0F;
   hourHigh = Hours >> 4;
   hourLow = Hours & 0x0F;
+  hourHigh12 = Hours12 >> 4;
+  hourLow12 = Hours12 & 0x0F;
   dayHigh = Days >> 4;
   dayLow = Days & 0x0F;
   monthHigh = Month >> 4;
   monthLow = Month & 0x0F;
   yearHigh = Years >> 4;
   yearLow = Years & 0x0F;
+  i = bcdToBin(Hours);
+  if(i >= 12) {
+    i -= 12;
+    Hours12 = binToBcd(i);
+  } else {
+    Hours12 = Hours;
+  }
+  hourHigh12 = Hours12 >> 4;
+  hourLow12 = Hours12 & 0x0F;
 }
 
 // ------------------------------------------------------------
