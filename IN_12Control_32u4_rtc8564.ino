@@ -22,6 +22,7 @@
 #define K155ID1_D 11
 #define COMMA 7
 #define LED 13
+#define GP01 23
 
 // ------------------------------------------------------------
 // -- グローバル変数
@@ -34,11 +35,13 @@ unsigned int interruptCount = 0;
 boolean interruptOVF = false;
 
 // IN-12 数字セグメント、カンマ
-unsigned char IN12Num[8] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-unsigned char IN12Com[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+unsigned char IN12Num[8] = { 
+  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+unsigned char IN12Com[8] = { 
+  0, 0, 0, 0, 0, 0, 0, 0 };
 unsigned char IN12Digit = 0;
-unsigned char IN12BrightDaytime = 5;
-unsigned char IN12BrightNight = 5;
+unsigned char IN12BrightDaytime = 9;
+unsigned char IN12BrightNight = 3;
 
 // USB Device address
 unsigned char udaddrOld = 0;
@@ -55,6 +58,7 @@ unsigned int displayDateSecondsValue = 10;    // 年月日表示秒数
 unsigned char dispTimeFormat = 0;             // 時分秒表示フォーマット
 unsigned char hourDaytime = 7;
 unsigned char hourNight = 22;
+unsigned char hour12_24format = 1;  // 0 = 12, 1 = 24 hour display
 
 // ユーザデータ表示秒数
 unsigned int userDataTimerValue = 30;         // ユーザーデータを表示する時間
@@ -65,7 +69,7 @@ unsigned int userDataTimerCount = 0;
 // ------------------------------------------------------------
 ISR(TIMER0_COMPA_vect) {
   unsigned char bright = 5;
-  
+
   // K155ID1 の A～D を設定
   digitalWrite(K155ID1_A, bitRead(IN12Num[IN12Digit], 0));
   digitalWrite(K155ID1_B, bitRead(IN12Num[IN12Digit], 1));
@@ -75,7 +79,8 @@ ISR(TIMER0_COMPA_vect) {
   // カンマの設定
   if(IN12Com[IN12Digit] != 0) {
     digitalWrite(COMMA, HIGH);
-  } else {
+  } 
+  else {
     digitalWrite(COMMA, LOW);
   }
 
@@ -87,33 +92,88 @@ ISR(TIMER0_COMPA_vect) {
   if(hourNight > hourDaytime) {
     if(rtc.bcdToBin(rtc.Hours) < hourDaytime || rtc.bcdToBin(rtc.Hours) >= hourNight) {
       bright = IN12BrightNight;
-    } else {
+    } 
+    else {
       bright = IN12BrightDaytime;
     }
-  } else {
+  } 
+  else {
     if(rtc.bcdToBin(rtc.Hours) >= hourNight && rtc.bcdToBin(rtc.Hours) < hourDaytime) {
       bright = IN12BrightNight;
-    } else {
+    } 
+    else {
       bright = IN12BrightDaytime;
     }
   }
   switch(bright) {
-    case 1: delayMicroseconds(100); break;
-    case 2: delayMicroseconds(200); break;
-    case 3: delayMicroseconds(300); break;
-    case 4: delayMicroseconds(400); break;
-    case 5: delayMicroseconds(500); break;
-    case 6: delayMicroseconds(600); break;
-    case 7: delayMicroseconds(700); break;
-    case 8: delayMicroseconds(800); break;
-    case 9: delayMicroseconds(900); break;
-    default: delayMicroseconds(900);
+  case 1: 
+    delayMicroseconds(50); 
+    break;
+  case 2: 
+    delayMicroseconds(100); 
+    break;
+  case 3: 
+    delayMicroseconds(200); 
+    break;
+  case 4: 
+    delayMicroseconds(300); 
+    break;
+  case 5: 
+    delayMicroseconds(400); 
+    break;
+  case 6: 
+    delayMicroseconds(500); 
+    break;
+  case 7: 
+    delayMicroseconds(600); 
+    break;
+  case 8: 
+    delayMicroseconds(700); 
+    break;
+  case 9: 
+    delayMicroseconds(800); 
+    break;
+  default: 
+    delayMicroseconds(800);
   }
   // IN-12 のアノード OFF
   digitalWrite(HC595RCLK, LOW);
   SPI.transfer(0x00);
   digitalWrite(HC595RCLK, HIGH);
 
+  switch(bright) {
+  case 1: 
+    delayMicroseconds(750); 
+    break;
+  case 2: 
+    delayMicroseconds(700); 
+    break;
+  case 3: 
+    delayMicroseconds(600); 
+    break;
+  case 4: 
+    delayMicroseconds(500); 
+    break;
+  case 5: 
+    delayMicroseconds(400); 
+    break;
+  case 6: 
+    delayMicroseconds(300); 
+    break;
+  case 7: 
+    delayMicroseconds(200); 
+    break;
+  case 8: 
+    delayMicroseconds(100); 
+    break;
+  case 9: 
+    //delayMicroseconds(800); 
+    break;
+  default: 
+  break;
+    //delayMicroseconds(800);
+  }
+  
   IN12Digit++;
   if(IN12Digit > 7) {
     IN12Digit = 0;
@@ -122,17 +182,20 @@ ISR(TIMER0_COMPA_vect) {
 
   // 割り込みマスクをセット
   TIFR0 |= (1<<OCF0A);
+  
+  //
 }
 
 // ------------------------------------------------------------
 // -- 初期設定
 // ------------------------------------------------------------
 void setup() {
-  
-  delay(1000);
-  // LEDポート
-  pinMode(LED, OUTPUT);
 
+  randomSeed(analogRead(0));
+  delay(500);
+  // LEDポート, GPIO
+  pinMode(LED, OUTPUT);
+  pinMode(GP01, INPUT_PULLUP);
   // 74HC595 
   pinMode(HC595RCLK, OUTPUT);
   digitalWrite(HC595RCLK, LOW);
@@ -190,6 +253,8 @@ void setup() {
 // -- メイン処理
 // ------------------------------------------------------------
 void loop() {
+  int i = 0;
+  int j = 0;
 
   // 1秒毎の処理
   if(interruptCount > 999) {
@@ -203,8 +268,14 @@ void loop() {
         }
         if(dispTimeFormat == 0) {
           IN12Num[0] = 0x0F;
-          IN12Num[1] = rtc.hourHigh;
-          IN12Num[2] = rtc.hourLow;
+          if(hour12_24format == 1) {
+            IN12Num[1] = rtc.hourHigh;
+            IN12Num[2] = rtc.hourLow;
+          } 
+          else {
+            IN12Num[1] = rtc.hourHigh12;
+            IN12Num[2] = rtc.hourLow12;
+          }
           IN12Num[3] = rtc.minutesHigh;
           IN12Num[4] = rtc.minutesLow;
           IN12Num[5] = rtc.secondsHigh;
@@ -212,8 +283,14 @@ void loop() {
           IN12Num[7] = 0x0F;
         }
         if(dispTimeFormat == 1) {
-          IN12Num[0] = rtc.hourHigh;
-          IN12Num[1] = rtc.hourLow;
+          if(hour12_24format == 1) {
+            IN12Num[0] = rtc.hourHigh;
+            IN12Num[1] = rtc.hourLow;
+          } 
+          else {
+            IN12Num[0] = rtc.hourHigh12;
+            IN12Num[1] = rtc.hourLow12;
+          }
           IN12Num[2] = 0x0F;
           IN12Num[3] = rtc.minutesHigh;
           IN12Num[4] = rtc.minutesLow;
@@ -223,7 +300,8 @@ void loop() {
           IN12Com[2] = 1;
           IN12Com[5] = 1;
         } 
-      } else {
+      } 
+      else {
         // 年月日表示
         for(int i = 0; i < 8; i++) {
           IN12Com[i] = 0;
@@ -250,7 +328,8 @@ void loop() {
     if(led == false) {
       led = true;
       digitalWrite(LED, HIGH);
-    } else {
+    } 
+    else {
       led = false;
       digitalWrite(LED,LOW);
     }
@@ -316,7 +395,7 @@ void loop() {
   if(serial0StringComplete == true) {
     // ニキシー表示データチェック
     boolean isUserData = true;
-    for(int i = 0; i < (serial0StringIdx - 1); i++) {
+    for(i = 0; i < (serial0StringIdx - 1); i++) {
       if(serial0String[i] == ' ') continue; 
       if(serial0String[i] == '.') continue;
       if((serial0String[i] >= '0') && (serial0String[i] <= '9')) continue;
@@ -324,12 +403,12 @@ void loop() {
     }
     // ユーザーデータを表示
     if(isUserData == true) {
-      for(int i = 0; i < 8; i++) {
+      for(i = 0; i < 8; i++) {
         IN12Num[i] = 0x0F;
         IN12Com[i] = 0;
       }
-      int j = 7;
-      for(int i = (serial0StringIdx - 1); i >= 0; i--) {
+      j = 7;
+      for(i = (serial0StringIdx - 1); i >= 0; i--) {
         if(serial0String[i] >= '0' && serial0String[i] <= '9') {
           if(j >= 0) {
             IN12Num[j--] = serial0String[i] - 0x30;
@@ -342,19 +421,23 @@ void loop() {
         }
       }
       j = 8;
-      for(int i = (serial0StringIdx - 1); i >= 0; i--) {
+      boolean previusCharValid = false;
+      for(i = (serial0StringIdx - 1); i >= 0; i--) {
         if((serial0String[i] >= '0' && serial0String[i] <= '9') || serial0String[i] == ' ') {
-          j--;
+          previusCharValid = true;
+          if(j > 0) {
+            j--;
+          }
           continue;
         }
-        if(serial0String[i] == '.') {
-          if(j >=0 && j < 8) {
-            IN12Com[j] = 1;
-          }
+        if(serial0String[i] == '.' && previusCharValid == true) {
+          IN12Com[j] = 1;
+          previusCharValid = false;
         }
-      }
+      } 
       userDataTimerCount = userDataTimerValue;
-    } else {
+    } 
+    else {
       // コマンド処理
       if(strncmp(serial0String, "help", 4) == 0) {
         serialPrintln("set time YYMMDD hhmmss");
@@ -366,10 +449,12 @@ void loop() {
         serialPrintln("set bright night [1 to 9]");
         serialPrintln("set hour daytime [0 to 23]");
         serialPrintln("set hour night [0 to 23]");
-        serialPrintln("cathod");
-        serialPrintln("save");
-        serialPrintln("show");
-        serialPrintln("time");
+        serialPrintln("set 12/24 format [0 or 1]");
+        serialPrintln("cathod -> Cathod poisoning");
+        serialPrintln("sekai  -> STEINS;GATE like effect");
+        serialPrintln("save   -> write EEPROM");
+        serialPrintln("show   -> show all setting");
+        serialPrintln("time   -> change to clock mode");
         serialPrintln("");
         serialPrintln("99999: numeric number 0 to 65535");
         serialPrintln("---");
@@ -416,6 +501,10 @@ void loop() {
         cathodePoisoning();
         serialPrintln("Done.");
       }
+      if(strncmp(serial0String, "sekai", 5) == 0) {
+        steins();
+        //serialPrintln("Done.");
+      }
       if(strncmp(serial0String, "set bright daytime ", 19) == 0) {
         unsigned int i = atoi(&serial0String[19]);
         if(i > 0 && i < 10) {
@@ -448,6 +537,14 @@ void loop() {
           serialPrintln(hourNight);
         }
       }
+      if(strncmp(serial0String, "set 12/24 format ", 17) == 0) {
+        unsigned int i = atoi(&serial0String[17]);
+        if(i == 0 || i == 1) {
+          hour12_24format = i;
+          serialPrint("value = ");
+          serialPrintln(hour12_24format);
+        }
+      } 
       if(strncmp(serial0String, "save", 4) == 0) {
         saveEEPROM();
         serialPrintln("EEPROM write complete");
@@ -472,11 +569,19 @@ void loop() {
         serialPrintln(hourDaytime);
         serialPrint("set hour night: ");
         serialPrintln(hourNight);
+        serialPrint("set 12/24 format: ");
+        serialPrintln(hour12_24format);
         serialPrintln("---");
       }
     }
     serial0StringIdx = 0;
     serial0StringComplete = false;
+  }
+  
+  if(interruptCount % 50 == 0) {
+    if(digitalRead(GP01) == LOW) {
+      steins();
+    }
   }
 }
 
@@ -485,7 +590,8 @@ void loop() {
 void serialPrintln(char *buf) {
   if(bit_is_clear(PINE, PINE2)) {
     Serial1.println(buf);
-  } else {
+  } 
+  else {
     Serial.println(buf);
   }
 }
@@ -493,7 +599,8 @@ void serialPrintln(char *buf) {
 void serialPrint(char *buf) {
   if(bit_is_clear(PINE, PINE2)) {
     Serial1.print(buf);
-  } else {
+  } 
+  else {
     Serial.print(buf);
   }
 }
@@ -501,7 +608,8 @@ void serialPrint(char *buf) {
 void serialPrintln(unsigned int val) {
   if(bit_is_clear(PINE, PINE2)) {
     Serial1.println(val);
-  } else {
+  } 
+  else {
     Serial.println(val);
   }
 }
@@ -509,7 +617,8 @@ void serialPrintln(unsigned int val) {
 void serialPrintln(unsigned char val) {
   if(bit_is_clear(PINE, PINE2)) {
     Serial1.println(val);
-  } else {
+  } 
+  else {
     Serial.println(val);
   }
 }
@@ -520,7 +629,7 @@ void serialPrintln(unsigned char val) {
 void saveEEPROM() {
   unsigned char byteHigh;
   unsigned char byteLow;
-  
+
   byteLow = displayDateIntervalValue & 0x0F;
   byteHigh = displayDateIntervalValue >> 4;
   EEPROM.write(0, byteLow);
@@ -541,6 +650,7 @@ void saveEEPROM() {
   EEPROM.write(8, IN12BrightNight);
   EEPROM.write(9, hourDaytime);
   EEPROM.write(10, hourNight);
+  EEPROM.write(11, hour12_24format);
 }
 
 // ------------------------------------------------------------
@@ -585,13 +695,20 @@ void readEEPROM() {
   if(hourNight > 23) {
     hourNight = 22;
   }
+  hour12_24format = EEPROM.read(11);
+  if(hour12_24format > 1) {
+    hour12_24format = 1;
+  }
 }
 
 // ------------------------------------------------------------
 // -- カソードポイズニング防止(全セグメント点灯)
 // ------------------------------------------------------------
 void cathodePoisoning() {
-  unsigned char a[17] = { 0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6 };
+  unsigned char a[17] = { 
+    0,1,2,3,4,5,6,7,8,9,0,1,2,3,4,5,6     };
+
+  userDataTimerCount = userDataTimerValue;
   for(int i = 0; i < 8; i++) {
     IN12Com[i] = 1;
   }
@@ -612,5 +729,102 @@ void cathodePoisoning() {
     IN12Num[i] = 0;
     IN12Com[i] = 0;
   }
+  userDataTimerCount = 0;
 } 
+
+
+// ------------------------------------------------------------
+// -- STEINS;GATE ダイバージェンスメーター風エフェクト
+// ------------------------------------------------------------
+void steins() {
+  long hendouRitsu[19] = {
+    571024,
+    571015,
+    523299,
+    456903,
+    409420,
+    37187,
+    409431,
+    456914,
+    523307,
+    571046,
+    334581,
+    1130426,
+    1129848,
+    1130205,
+    1130212,
+    1130238,
+    2615074,
+    3014368,
+    4389117     
+  };
+  char hendouRitsuStr[10];
+  unsigned char charValid[8] = { 
+    1, 1, 0, 0, 0, 0, 0, 0
+  };
+  int charValidIdx;
+  int randNumber;
+  char randNumber2;
+  boolean loopComplete = false;
+  int i;
+  int j;
+
+  // カンマクリア
+  for(i = 0; i < 8; i++) {
+    IN12Com[i] = 0;
+  }
+  // 時計表示からユーザーデータ表示に切り替え
+  userDataTimerCount = userDataTimerValue;
+
+  // 変動率をピックアップして7桁の文字列変換
+  randNumber = (int)random(20);
+  sprintf(hendouRitsuStr, "%07ld", hendouRitsu[randNumber]);
+
+  // 2桁目はカンマ、スペース固定
+  IN12Num[1] = 0x0F;
+  IN12Com[1] = 1;
+
+  // 1, 3～8桁目をランダムに表示し1桁目の表示を確定させる
+  randNumber = (int)random(400);
+  for(i = 0; i < randNumber; i++) {
+    for(j = 0; j < 8; j++) {
+      randNumber2 = (char)random(10);
+      IN12Num[j] = randNumber2;
+      IN12Num[1] = 0x0F;
+    }
+    //delay(2);
+  }
+  IN12Num[0] = hendouRitsuStr[0] - 0x30;
+
+  // 3～8桁目をランダム表示。
+  do {
+    charValidIdx = (int)random(2,8);
+    // 表示確定している桁はスキップ
+    if(charValid[charValidIdx] == 1) {
+      continue;
+    }
+
+    randNumber = random(200);
+    for(i = 0; i < randNumber; i++) {
+      for(j = 2; j < 8; j++) {
+        randNumber2 = random(10);
+        if(charValid[j] == 0) {
+          IN12Num[j] = randNumber2;
+        }
+      }
+      //delay(2);
+    }
+    IN12Num[charValidIdx] = hendouRitsuStr[charValidIdx - 1] - 0x30;
+    charValid[charValidIdx] = 1;
+    // 全桁表示完了したかチェック
+    loopComplete = true;
+    for(i = 0; i < 8; i++) {
+      if(charValid[i] == 0) {
+        loopComplete = false;
+      }
+    }
+  } while(loopComplete == false);
+  userDataTimerCount = userDataTimerValue;
+} 
+
 
