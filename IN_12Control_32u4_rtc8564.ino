@@ -110,31 +110,31 @@ ISR(TIMER0_COMPA_vect) {
     delayMicroseconds(50); 
     break;
   case 2: 
-    delayMicroseconds(100); 
+    delayMicroseconds(150); 
     break;
   case 3: 
-    delayMicroseconds(200); 
+    delayMicroseconds(250); 
     break;
   case 4: 
-    delayMicroseconds(300); 
+    delayMicroseconds(350); 
     break;
   case 5: 
-    delayMicroseconds(400); 
+    delayMicroseconds(450); 
     break;
   case 6: 
-    delayMicroseconds(500); 
+    delayMicroseconds(550); 
     break;
   case 7: 
-    delayMicroseconds(600); 
+    delayMicroseconds(650); 
     break;
   case 8: 
-    delayMicroseconds(700); 
+    delayMicroseconds(750); 
     break;
   case 9: 
-    delayMicroseconds(800); 
+    delayMicroseconds(850); 
     break;
   default: 
-    delayMicroseconds(800);
+    delayMicroseconds(850);
   }
   // IN-12 のアノード OFF
   digitalWrite(HC595RCLK, LOW);
@@ -146,25 +146,25 @@ ISR(TIMER0_COMPA_vect) {
     delayMicroseconds(750); 
     break;
   case 2: 
-    delayMicroseconds(700); 
+    delayMicroseconds(650); 
     break;
   case 3: 
-    delayMicroseconds(600); 
+    delayMicroseconds(550); 
     break;
   case 4: 
-    delayMicroseconds(500); 
+    delayMicroseconds(450); 
     break;
   case 5: 
-    delayMicroseconds(400); 
+    delayMicroseconds(350); 
     break;
   case 6: 
-    delayMicroseconds(300); 
+    delayMicroseconds(250); 
     break;
   case 7: 
-    delayMicroseconds(200); 
+    delayMicroseconds(150); 
     break;
   case 8: 
-    delayMicroseconds(100); 
+    delayMicroseconds(50); 
     break;
   case 9: 
     //delayMicroseconds(800); 
@@ -577,12 +577,14 @@ void loop() {
     serial0StringIdx = 0;
     serial0StringComplete = false;
   }
-  
-  if(interruptCount % 50 == 0) {
-    if(digitalRead(GP01) == LOW) {
-      steins();
-    }
-  }
+  // STEINS;GATE 風エフェクト表示
+  // 0.5秒毎にPORTF0をチェック
+//  if(interruptCount == 499 && steinsOVF == false) {
+//    steinsOVF = true;
+//    if(digitalRead(GP01) == LOW) {
+//      steins();
+//    }
+//  }
 }
 
 // コマンド処理の応答表示を PE2 のピン状態で振り分け
