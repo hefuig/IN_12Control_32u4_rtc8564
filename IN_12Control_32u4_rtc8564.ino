@@ -6,6 +6,7 @@
 // -- http://mkusunoki.net
 // -- Release 20130903 Rev 001
 // ------------------------------------------------------------
+#include <avr/wdt.h>
 #include <interrupt.h>
 #include <SPI.h>
 #include <Wire.h>
@@ -47,8 +48,9 @@ unsigned char IN12BrightNight = 3;
 unsigned char udaddrOld = 0;
 
 // シリアルデータ
+#define SERIALBUF_LEN 32
 boolean serial0StringComplete = false;
-char serial0String[24];
+char serial0String[SERIALBUF_LEN];
 int serial0StringIdx = 0;
 
 // 時計表示秒数
@@ -190,8 +192,10 @@ ISR(TIMER0_COMPA_vect) {
 // -- 初期設定
 // ------------------------------------------------------------
 void setup() {
-
-  randomSeed(analogRead(0));
+  // Watchdog タイマ停止
+  MCUSR = 0;
+  wdt_disable();
+  
   delay(500);
   // LEDポート, GPIO
   pinMode(LED, OUTPUT);
@@ -247,6 +251,9 @@ void setup() {
   TIFR0 |= (1<<OCF0A);
   // Enable interrupt
   TIMSK0 |= (1<<OCIE0A);
+  
+  // Watchdog タイマ設定
+  wdt_enable(WDTO_1S);
 }
 
 // ------------------------------------------------------------
@@ -359,8 +366,8 @@ void loop() {
         serial0StringComplete = true;
       }
       serial0StringIdx++;
-      if(serial0StringIdx > 23) {
-        serial0StringIdx = 23;
+      if(serial0StringIdx >= SERIALBUF_LEN) {
+        serial0StringIdx = SERIALBUF_LEN - 1;
       }
       // CR コードだけの入力は無視
       if(serial0StringComplete == true && serial0StringIdx == 1) {
@@ -381,8 +388,8 @@ void loop() {
       serial0StringComplete = true;
     }
     serial0StringIdx++;
-    if(serial0StringIdx > 23) {
-      serial0StringIdx = 23;
+    if(serial0StringIdx >= SERIALBUF_LEN) {
+      serial0StringIdx = SERIALBUF_LEN - 1;
     }
     // CR コードだけの入力は無視
     if(serial0StringComplete == true && serial0StringIdx == 1) {
@@ -577,14 +584,7 @@ void loop() {
     serial0StringIdx = 0;
     serial0StringComplete = false;
   }
-  // STEINS;GATE 風エフェクト表示
-  // 0.5秒毎にPORTF0をチェック
-//  if(interruptCount == 499 && steinsOVF == false) {
-//    steinsOVF = true;
-//    if(digitalRead(GP01) == LOW) {
-//      steins();
-//    }
-//  }
+  wdt_reset();
 }
 
 // コマンド処理の応答表示を PE2 のピン状態で振り分け
@@ -726,6 +726,7 @@ void cathodePoisoning() {
       IN12Num[7] = a[i+7];
       delay(800);
     }
+    wdt_reset();
   }
   for(int i = 0; i < 8; i++) {
     IN12Num[i] = 0;
@@ -794,6 +795,7 @@ void steins() {
       IN12Num[j] = randNumber2;
       IN12Num[1] = 0x0F;
     }
+    wdt_reset();
     //delay(2);
   }
   IN12Num[0] = hendouRitsuStr[0] - 0x30;
@@ -814,6 +816,7 @@ void steins() {
           IN12Num[j] = randNumber2;
         }
       }
+      wdt_reset();
       //delay(2);
     }
     IN12Num[charValidIdx] = hendouRitsuStr[charValidIdx - 1] - 0x30;
